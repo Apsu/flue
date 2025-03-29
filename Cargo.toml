@@ -6,10 +6,10 @@ edition = "2024"
 [dependencies]
 accelerate-src = { version = "0.3.2", optional = true }
 anyhow = "1.0.97"
-candle-core = { version = "0.8.4", features = ["accelerate"] }
+candle-core = { version = "0.8.4" }
 candle-flash-attn = { version = "0.8.4", optional = true } # For flash attention support, requires CUDA or Accelerate
-candle-nn = { version = "0.8.4", features = ["accelerate"] }
-candle-transformers = { version = "0.8.4", features = ["accelerate"] }
+candle-nn = { version = "0.8.4" }
+candle-transformers = { version = "0.8.4" }
 clap = { version = "4.5.34", features = ["derive"] }
 hf-hub = { version = "0.4.2", features = ["tokio"] }
 image = "0.25.6"
