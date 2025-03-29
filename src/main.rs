@@ -256,6 +256,6 @@ fn run(args: Args) -> Result<()> {
 fn main() -> Result<()> {
     let args = Args::parse();
     #[cfg(feature = "cuda")]
-    candle::quantized::cuda::set_force_dmmv(args.use_dmmv);
+    candle_core::quantized::cuda::set_force_dmmv(args.use_dmmv);
     run(args)
 }
