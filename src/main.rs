@@ -71,8 +71,8 @@ fn generate_image(
     // Set defaults.
     let width = params.width.unwrap_or(1360);
     let height = params.height.unwrap_or(768);
-    let steps = params.steps.unwrap_or(50);
-    let guidance = params.guidance.unwrap_or(4.0);
+    let steps = params.steps.unwrap_or(4);
+    let guidance = params.guidance.unwrap_or(0.0);
 
     // Optionally set seed for reproducibility.
     if let Some(seed) = params.seed {
@@ -138,6 +138,11 @@ fn generate_image(
 
 #[tokio::main]
 async fn main() {
+    #[cfg(feature = "cuda")]
+    {
+        candle_core::quantized::cuda::set_force_dmmv(false);
+        candle_core::quantized::cuda::set_memory_pool(true, 20 << 30); // Enable CUDA memory pool if using CUDA
+    }
     // --- Load models once at startup ---
 
     // Create the HF hub API instance.
