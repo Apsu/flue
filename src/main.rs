@@ -41,10 +41,6 @@ struct Args {
     #[arg(long, value_enum, default_value = "schnell")]
     model: Model,
 
-    /// Use the slower kernels.
-    #[arg(long)]
-    use_dmmv: bool,
-
     /// The seed to use when generating random samples.
     #[arg(long)]
     seed: Option<u64>,
@@ -72,14 +68,6 @@ fn run(args: Args) -> Result<()> {
     } = args;
     let width = width.unwrap_or(1360);
     let height = height.unwrap_or(768);
-
-    // let _guard = if tracing {
-    //     let (chrome_layer, guard) = ChromeLayerBuilder::new().build();
-    //     tracing_subscriber::registry().with(chrome_layer).init();
-    //     Some(guard)
-    // } else {
-    //     None
-    // };
 
     let api = hf_hub::api::sync::Api::new()?;
     let bf_repo = {
@@ -120,10 +108,9 @@ fn run(args: Args) -> Result<()> {
                     .to_vec();
                 tokens.resize(256, 0);
                 let input_token_ids = Tensor::new(&tokens[..], &device)?.unsqueeze(0)?;
-                println!("{input_token_ids}");
                 model.forward(&input_token_ids)?
             };
-            println!("T5\n{t5_emb}");
+            println!("Loaded T5");
             let clip_emb = {
                 let repo = api.repo(hf_hub::Repo::model(
                     "openai/clip-vit-large-patch14".to_string(),
@@ -153,10 +140,9 @@ fn run(args: Args) -> Result<()> {
                     .get_ids()
                     .to_vec();
                 let input_token_ids = Tensor::new(&tokens[..], &device)?.unsqueeze(0)?;
-                println!("{input_token_ids}");
                 model.forward(&input_token_ids)?
             };
-            println!("CLIP\n{clip_emb}");
+            println!("Loaded CLIP");
             let img = {
                 let cfg = match model {
                     Model::Dev => flux::model::Config::dev(),
@@ -178,8 +164,6 @@ fn run(args: Args) -> Result<()> {
                     }
                     Model::Schnell => flux::sampling::get_schedule(4, None),
                 };
-                println!("{state:?}");
-                println!("{timesteps:?}");
                 if quantized {
                     let model_file = match model {
                         Model::Schnell => api
@@ -231,7 +215,7 @@ fn run(args: Args) -> Result<()> {
             st.remove("img").unwrap().to_dtype(dtype)?
         }
     };
-    println!("latent img\n{img}");
+    println!("Loaded latent img");
 
     let img = {
         let model_file = bf_repo.get("ae.safetensors")?;
@@ -243,7 +227,7 @@ fn run(args: Args) -> Result<()> {
         let model = flux::autoencoder::AutoEncoder::new(&cfg, vb)?;
         model.decode(&img)?
     };
-    println!("img\n{img}");
+    println!("Loaded img");
     let img = ((img.clamp(-1f32, 1f32)? + 1.0)? * 127.5)?.to_dtype(candle_core::DType::U8)?;
     let filename = match args.seed {
         None => "out.png".to_string(),
@@ -255,7 +239,5 @@ fn run(args: Args) -> Result<()> {
 
 fn main() -> Result<()> {
     let args = Args::parse();
-    #[cfg(feature = "cuda")]
-    candle_core::quantized::cuda::set_force_dmmv(args.use_dmmv);
     run(args)
 }
