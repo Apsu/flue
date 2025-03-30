@@ -1,35 +1,35 @@
-[package]
-name = "flue"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "flue-core",
+    "flue-server",
+]
+resolver = "2"
 
-[dependencies]
-accelerate-src = { version = "0.3.2", optional = true }
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+description = "TODO"
+homepage = "https://github.com/Apsu/flue"
+repository = "https://github.com/Apsu/flue"
+keywords = ["machine-learning"]
+categories = ["science"]
+license = "MIT"
+
+[workspace.dependencies]
+accelerate-src = { version = "0.3.2" }
 anyhow = "1.0.97"
 axum = "0.8.3"
 base64 = "0.22.1"
 candle-core = { version = "0.8.4" }
-candle-flash-attn = { version = "0.8.4", optional = true } # For flash attention support, requires CUDA or Accelerate
+candle-flash-attn = { version = "0.8.4" } # For flash attention support, requires CUDA or Accelerate
 candle-nn = { version = "0.8.4" }
 candle-transformers = { version = "0.8.4" }
 clap = { version = "4.5.34", features = ["derive"] }
 hf-hub = { version = "0.4.2", features = ["tokio"] }
 image = "0.25.6"
-intel-mkl-src = { version = "0.8.1", optional = true }
+intel-mkl-src = { version = "0.8.1" }
 safetensors = "0.5.3"
 serde = "1.0.219"
 serde_json = "1.0.140"
-tokenizers = { version = "0.21.1", features = ["hf-hub", "http"] }
+tokenizers = { version = "0.21.1", default-features = false }
 tokio = "1.44.1"
-
-[build-dependencies]
-bindgen_cuda = { version = "0.1.1", optional = true }
-
-[features]
-accelerate = ["dep:accelerate-src", "candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
-metal = ["candle-core/metal", "candle-nn/metal"]
-cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda", "dep:bindgen_cuda"]
-cudnn = ["candle-core/cudnn"]
-flash-attn = ["cuda", "candle-transformers/flash-attn", "dep:candle-flash-attn"]
-mkl = ["candle-core/mkl", "candle-nn/mkl"] # Enable Intel MKL support
-intel-mkl-src = ["dep:intel-mkl-src"]
