@@ -26,5 +26,5 @@ pub struct GenerationRequest {
 }
 
 pub trait ModelLike: Send + Sync {
-    fn run(&mut self, request: GenerationRequest) -> anyhow::Result<DynamicImage>;
+    fn run(&self, request: GenerationRequest) -> anyhow::Result<DynamicImage>;
 }

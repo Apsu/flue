@@ -12,10 +12,7 @@ use flue_core::{DeviceMap, FluxLoader, GenerationRequest, Loader, ModelLike};
 use hf_hub::api::tokio::Api;
 use image::DynamicImage;
 use serde::Serialize;
-use std::{
-    io::Cursor,
-    sync::{Arc, Mutex},
-};
+use std::{io::Cursor, sync::Arc};
 use tokio::{self, net::TcpListener};
 
 // Define command line arguments
@@ -53,7 +50,7 @@ struct GenerationResponse {
 
 // Application state containing the preloaded models and device settings.
 #[derive(Clone)]
-struct AppState(Arc<Mutex<dyn ModelLike>>);
+struct AppState(Arc<dyn ModelLike>);
 
 async fn generate_image_handler(
     State(state): State<Arc<AppState>>,
@@ -70,7 +67,7 @@ async fn generate_image_handler(
 
 /// This function uses the preloaded models from `state` to generate an image (base64).
 async fn generate_image(params: GenerationRequest, state: &AppState) -> Result<String> {
-    let image = state.0.lock().unwrap().run(params)?;
+    let image = state.0.run(params)?;
     image_to_base64_png(&image)
 }
 
@@ -81,7 +78,7 @@ async fn main() -> Result<()> {
     let model = FluxLoader::load(Api::new()?, DeviceMap::default()).await?;
 
     // Build application state and wrap in Arc.
-    let app_state = AppState(Arc::new(Mutex::new(model)));
+    let app_state = AppState(Arc::new(model));
     let shared_state = Arc::new(app_state);
 
     // --- Build axum router with shared state ---
