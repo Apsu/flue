@@ -973,6 +973,7 @@ dependencies = [
 name = "flue-server"
 version = "0.1.0"
 dependencies = [
+ "accelerate-src",
  "anyhow",
  "axum",
  "base64 0.22.1",
@@ -984,6 +985,7 @@ dependencies = [
  "flue-core",
  "hf-hub",
  "image",
+ "intel-mkl-src",
  "serde",
  "serde_json",
  "tokenizers",
