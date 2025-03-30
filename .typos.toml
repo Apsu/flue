@@ -1,0 +1,7 @@
+[default]
+extend-ignore-identifiers-re = [
+    "mmaped",
+]
+
+[files]
+extend-exclude = []
