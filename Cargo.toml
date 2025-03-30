@@ -8,7 +8,7 @@ resolver = "2"
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-description = "TODO"
+description = "Fast, Lightweight, Unified Engine for Text2Image Diffusion Models"
 homepage = "https://github.com/Apsu/flue"
 repository = "https://github.com/Apsu/flue"
 keywords = ["machine-learning"]
