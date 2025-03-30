@@ -7,37 +7,16 @@ use axum::{
     Router,
 };
 use base64::{prelude::BASE64_STANDARD, Engine};
+use clap::Parser;
 use flue_core::{DeviceMap, FluxLoader, GenerationRequest, Loader, ModelLike};
 use hf_hub::api::tokio::Api;
 use image::DynamicImage;
-use clap::Parser;
 use serde::Serialize;
 use std::{
     io::Cursor,
     sync::{Arc, Mutex},
 };
 use tokio::{self, net::TcpListener};
-
-// Define command line arguments
-#[derive(Parser, Debug)]
-#[command(author, version, about = "Flue image generation server")]
-struct Args {
-    /// Use CPU instead of GPU
-    #[arg(long)]
-    cpu: bool,
-
-    /// Model variant to use
-    #[arg(long, default_value = "black-forest-labs/FLUX.1-schnell")]
-    model: String,
-
-    /// Host address to bind the server to
-    #[arg(long, default_value = "127.0.0.1")]
-    host: String,
-
-    /// Port to bind the server to
-    #[arg(long, default_value_t = 8000)]
-    port: u16,
-}
 
 // Define command line arguments
 #[derive(Parser, Debug)]
@@ -98,6 +77,8 @@ async fn generate_image(params: GenerationRequest, state: &AppState) -> Result<S
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
+
     let model = FluxLoader::load(Api::new()?, DeviceMap::default()).await?;
 
     // Build application state and wrap in Arc.
