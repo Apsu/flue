@@ -10,12 +10,55 @@ use base64::{prelude::BASE64_STANDARD, Engine};
 use flue_core::{DeviceMap, FluxLoader, GenerationRequest, Loader, ModelLike};
 use hf_hub::api::tokio::Api;
 use image::DynamicImage;
+use clap::Parser;
 use serde::Serialize;
 use std::{
     io::Cursor,
     sync::{Arc, Mutex},
 };
 use tokio::{self, net::TcpListener};
+
+// Define command line arguments
+#[derive(Parser, Debug)]
+#[command(author, version, about = "Flue image generation server")]
+struct Args {
+    /// Use CPU instead of GPU
+    #[arg(long)]
+    cpu: bool,
+
+    /// Model variant to use
+    #[arg(long, default_value = "black-forest-labs/FLUX.1-schnell")]
+    model: String,
+
+    /// Host address to bind the server to
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Port to bind the server to
+    #[arg(long, default_value_t = 8000)]
+    port: u16,
+}
+
+// Define command line arguments
+#[derive(Parser, Debug)]
+#[command(author, version, about = "Flue image generation server")]
+struct Args {
+    /// Use CPU instead of GPU
+    #[arg(long)]
+    cpu: bool,
+
+    /// Model variant to use
+    #[arg(long, default_value = "black-forest-labs/FLUX.1-schnell")]
+    model: String,
+
+    /// Host address to bind the server to
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Port to bind the server to
+    #[arg(long, default_value_t = 8000)]
+    port: u16,
+}
 
 /// Converts a tensor with shape (3, height, width) into a base64-encoded PNG.
 fn image_to_base64_png(img: &DynamicImage) -> Result<String> {
@@ -66,7 +109,9 @@ async fn main() -> Result<()> {
         .route("/v1/images/generations", post(generate_image_handler))
         .with_state(shared_state);
 
-    let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    // --- Start the server ---
+    let bind_address = format!("{}:{}", args.host, args.port);
+    let listener = TcpListener::bind(&bind_address).await.unwrap();
     println!("Starting server on {}", listener.local_addr().unwrap());
     axum::serve(listener, app.into_make_service()).await?;
 
