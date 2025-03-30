@@ -139,10 +139,7 @@ fn generate_image(
 #[tokio::main]
 async fn main() {
     #[cfg(feature = "cuda")]
-    {
-        candle_core::quantized::cuda::set_force_dmmv(false);
-        candle_core::quantized::cuda::set_memory_pool(true, 20 << 30); // Enable CUDA memory pool if using CUDA
-    }
+    candle_core::quantized::cuda::set_force_dmmv(false);
     // --- Load models once at startup ---
 
     // Create the HF hub API instance.
