@@ -232,9 +232,7 @@ async fn main() {
         .expect("failed to load CLIP tokenizer");
 
     // --- Load Autoencoder and Flux Model ---
-    let bf_repo = {
-        api.repo(hf_hub::Repo::model(args.model.clone()))
-    };
+    let bf_repo = api.repo(hf_hub::Repo::model(args.model.clone()));
     let autoencoder_model_file = bf_repo
         .get("ae.safetensors")
         .expect("failed to get autoencoder model file");
