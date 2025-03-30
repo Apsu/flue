@@ -13,7 +13,9 @@ pub fn device(cpu: bool) -> Result<Device> {
     } else {
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         {
-            println!("Running on CPU, to run on GPU(metal), build this example with `--features metal`");
+            println!(
+                "Running on CPU, to run on GPU(metal), build this example with `--features metal`"
+            );
         }
         #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
         {
@@ -35,7 +37,8 @@ pub fn tensor_to_base64_png(img: &Tensor) -> Result<String> {
         .ok_or_else(|| candle_core::Error::msg("error converting tensor to image buffer"))?;
     let dyn_img = image::DynamicImage::ImageRgb8(buffer);
     let mut bytes = Vec::new();
-    dyn_img.write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png)
+    dyn_img
+        .write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png)
         .map_err(candle_core::Error::wrap)?;
     Ok(BASE64_STANDARD.encode(&bytes))
 }

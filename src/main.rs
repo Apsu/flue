@@ -1,24 +1,25 @@
 use axum::{
+    Router,
     extract::{Json, State},
     http::StatusCode,
     response::IntoResponse,
     routing::post,
-    Router
 };
 use candle_core::{DType, Device, Error, IndexOp};
 use candle_nn::Module;
 use candle_transformers::models::{
     clip::text_model::{self, ClipTextTransformer},
-    flux::{self, autoencoder::AutoEncoder, model::{self, Flux}},
+    flux::{
+        self,
+        autoencoder::AutoEncoder,
+        model::{self, Flux},
+    },
     t5::{self, T5EncoderModel},
-    };
-use tokenizers::Tokenizer;
-use tokio::{
-    net::TcpListener,
-    self,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
+use tokenizers::Tokenizer;
+use tokio::{self, net::TcpListener};
 
 // Define the request/response types.
 #[derive(Deserialize)]
@@ -80,8 +81,8 @@ fn generate_image(
     }
 
     // --- Generate noise image ---
-    let noise_img = flux::sampling::get_noise(1, height, width, &state.device)?
-        .to_dtype(state.dtype)?;
+    let noise_img =
+        flux::sampling::get_noise(1, height, width, &state.device)?.to_dtype(state.dtype)?;
 
     // --- Compute T5 embedding using the preloaded T5 model and tokenizer ---
     let mut t5_tokens = state
@@ -103,7 +104,11 @@ fn generate_image(
         .to_vec();
     let input_token_ids_clip =
         candle_core::Tensor::new(&*clip_tokens, &state.device)?.unsqueeze(0)?;
-    let clip_emb = state.clip_model.lock().unwrap().forward(&input_token_ids_clip)?;
+    let clip_emb = state
+        .clip_model
+        .lock()
+        .unwrap()
+        .forward(&input_token_ids_clip)?;
 
     // --- Create sampling state and schedule ---
     let sampling_state = flux::sampling::State::new(&t5_emb, &clip_emb, &noise_img)?;
@@ -129,8 +134,7 @@ fn generate_image(
     println!("Decoded image");
 
     // --- Postprocessing: clamp, scale, convert type, and convert to base64 PNG ---
-    let img = ((decoded.clamp(-1f32, 1f32)? + 1.0)? * 127.5)?
-        .to_dtype(DType::U8)?;
+    let img = ((decoded.clamp(-1f32, 1f32)? + 1.0)? * 127.5)?.to_dtype(DType::U8)?;
     let img_tensor = img.i(0)?;
     let img_base64 = flue::tensor_to_base64_png(&img_tensor)?;
     Ok(img_base64)
@@ -156,7 +160,9 @@ async fn main() {
         hf_hub::RepoType::Model,
         "refs/pr/2".to_string(),
     ));
-    let t5_model_file = t5_repo.get("model.safetensors").expect("failed to load T5 model file");
+    let t5_model_file = t5_repo
+        .get("model.safetensors")
+        .expect("failed to load T5 model file");
     let t5_vb = unsafe {
         candle_nn::VarBuilder::from_mmaped_safetensors(&[t5_model_file], dtype, &device)
             .expect("failed to build T5 var builder")
@@ -165,9 +171,7 @@ async fn main() {
     let config_str = std::fs::read_to_string(&config_filename).expect("failed to read T5 config");
     let t5_config: t5::Config =
         serde_json::from_str(&config_str).expect("failed to parse T5 config");
-    let t5_model =
-        T5EncoderModel::load(t5_vb, &t5_config)
-            .expect("failed to load T5 model");
+    let t5_model = T5EncoderModel::load(t5_vb, &t5_config).expect("failed to load T5 model");
     let t5_tokenizer_filename = api
         .model("lmz/mt5-tokenizers".to_string())
         .get("t5-v1_1-xxl.tokenizer.json")
@@ -176,8 +180,9 @@ async fn main() {
         .expect("failed to load T5 tokenizer");
 
     // --- Load CLIP Model and Tokenizer ---
-    let clip_repo = api
-        .repo(hf_hub::Repo::model("openai/clip-vit-large-patch14".to_string()));
+    let clip_repo = api.repo(hf_hub::Repo::model(
+        "openai/clip-vit-large-patch14".to_string(),
+    ));
     let clip_model_file = clip_repo
         .get("model.safetensors")
         .expect("failed to get CLIP model file");
@@ -196,11 +201,8 @@ async fn main() {
         num_hidden_layers: 12,
         num_attention_heads: 12,
     };
-    let clip_model = ClipTextTransformer::new(
-        clip_vb.pp("text_model"),
-        &clip_config,
-    )
-    .expect("failed to load CLIP model");
+    let clip_model = ClipTextTransformer::new(clip_vb.pp("text_model"), &clip_config)
+        .expect("failed to load CLIP model");
     let clip_tokenizer_filename = clip_repo
         .get("tokenizer.json")
         .expect("failed to get CLIP tokenizer");
@@ -220,8 +222,8 @@ async fn main() {
             .expect("failed to build autoencoder var builder")
     };
     let autoencoder_config = flux::autoencoder::Config::schnell();
-    let autoencoder = AutoEncoder::new(&autoencoder_config, autoencoder_vb)
-        .expect("failed to load autoencoder");
+    let autoencoder =
+        AutoEncoder::new(&autoencoder_config, autoencoder_vb).expect("failed to load autoencoder");
 
     // --- Load Flux Model (non-quantized) ---
     let flux_model_file = bf_repo
@@ -232,8 +234,7 @@ async fn main() {
             .expect("failed to build flux var builder")
     };
     let flux_config = model::Config::schnell();
-    let flux_model =
-        Flux::new(&flux_config, flux_vb).expect("failed to load flux model");
+    let flux_model = Flux::new(&flux_config, flux_vb).expect("failed to load flux model");
 
     // Build application state and wrap in Arc.
     let app_state = AppState {
