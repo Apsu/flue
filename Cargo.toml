@@ -25,11 +25,11 @@ candle-flash-attn = { version = "0.8.4" } # For flash attention support, require
 candle-nn = { version = "0.8.4" }
 candle-transformers = { version = "0.8.4" }
 clap = { version = "4.5.34", features = ["derive"] }
-hf-hub = { version = "0.4.2", features = ["tokio"] }
+hf-hub = { version = "0.4.2", default-features = false, features = ["ureq", "tokio", "rustls-tls"] }
 image = "0.25.6"
 intel-mkl-src = { version = "0.8.1" }
 safetensors = "0.5.3"
 serde = "1.0.219"
 serde_json = "1.0.140"
-tokenizers = { version = "0.21.1", default-features = false }
+tokenizers = { version = "0.21.1", features = ["hf-hub"] }
 tokio = "1.44.1"
