@@ -30,7 +30,7 @@ pub struct FluxModel {
 }
 
 impl ModelLike for FluxModel {
-    fn run(&mut self, request: GenerationRequest) -> anyhow::Result<DynamicImage> {
+    fn run(&self, request: GenerationRequest) -> anyhow::Result<DynamicImage> {
         // Set defaults.
         let width = request.width.unwrap_or(1360);
         let height = request.height.unwrap_or(768);
