@@ -406,18 +406,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "candle-flash-attn"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dc08e6b4740a54e30d70cca5759de9c805b85279de662b091ea135077f24ce3"
-dependencies = [
- "anyhow",
- "bindgen_cuda",
- "candle-core",
- "half",
-]
-
-[[package]]
 name = "candle-kernels"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -955,9 +943,10 @@ dependencies = [
  "accelerate-src",
  "anyhow",
  "candle-core",
- "candle-flash-attn",
  "candle-nn",
  "candle-transformers",
+ "flue-flash-attn",
+ "flue-flash-attn-v3",
  "hf-hub",
  "image",
  "intel-mkl-src",
@@ -970,25 +959,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "flue-flash-attn"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "bindgen_cuda",
+ "candle-core",
+ "half",
+]
+
+[[package]]
+name = "flue-flash-attn-v3"
+version = "0.8.0"
+dependencies = [
+ "anyhow",
+ "candle-core",
+ "half",
+ "num_cpus",
+ "rayon",
+]
+
+[[package]]
 name = "flue-server"
 version = "0.1.0"
 dependencies = [
- "accelerate-src",
  "anyhow",
  "axum",
  "base64 0.22.1",
- "candle-core",
- "candle-flash-attn",
- "candle-nn",
- "candle-transformers",
  "clap",
  "flue-core",
  "hf-hub",
  "image",
- "intel-mkl-src",
  "serde",
  "serde_json",
- "tokenizers",
  "tokio",
 ]
 

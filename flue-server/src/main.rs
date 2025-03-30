@@ -42,8 +42,7 @@ struct Args {
 /// Converts a tensor with shape (3, height, width) into a base64-encoded PNG.
 fn image_to_base64_png(img: &DynamicImage) -> Result<String> {
     let mut bytes = Vec::new();
-    img.write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png)
-        .map_err(candle_core::Error::wrap)?;
+    img.write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png)?;
     Ok(BASE64_STANDARD.encode(&bytes))
 }
 

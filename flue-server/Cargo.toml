@@ -21,27 +21,12 @@ image = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
-# TODO: remove when using flue-core entirely
-candle-core = { workspace = true }
-candle-flash-attn = { workspace = true, optional = true }
-candle-nn = { workspace = true }
-candle-transformers = { workspace = true }
-tokenizers = { workspace = true }
-accelerate-src = { workspace = true, optional = true }
-intel-mkl-src = { workspace = true, optional = true }
 
 [features]
-# TODO: remove when using flue-core entirely
-# cuda = ["flue-core/cuda"]
-# cudnn = ["flue-core/cudnn"]
-# metal = ["flue-core/metal"]
-# flash-attn = ["cuda", "flue-core/flash-attn"]
-# accelerate = ["flue-core/accelerate"]
-# mkl = ["flue-core/mkl"]
-cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
-cudnn = ["candle-core/cudnn"]
-metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
-flash-attn = ["cuda", "candle-flash-attn"]
-accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate", "dep:accelerate-src"]
-mkl = ["candle-core/mkl", "candle-nn/mkl", "candle-transformers/mkl", "dep:intel-mkl-src"]
-
+cuda = ["flue-core/cuda"]
+cudnn = ["flue-core/cudnn"]
+metal = ["flue-core/metal"]
+flash-attn = ["cuda", "flue-core/flash-attn"]
+flash-attn-v3 = ["cuda", "flue-core/flash-attn-v3"]
+accelerate = ["flue-core/accelerate"]
+mkl = ["flue-core/mkl"]

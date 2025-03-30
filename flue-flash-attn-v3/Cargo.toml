@@ -1,0 +1,25 @@
+[package]
+name = "flue-flash-attn-v3"
+version = "0.8.0"
+edition = "2021"
+
+description = "Flash attention V3 layer for Flue!"
+keywords = ["blas", "tensor", "machine-learning"]
+categories = ["science"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/Apsu/flue"
+
+[dependencies]
+candle-core = { version = "0.8.4", features = ["cuda"] }
+half = { version = "2.3.1", features = ["num-traits"] }
+
+[build-dependencies]
+anyhow = { version = "1", features = ["backtrace"] }
+num_cpus = "1.15.0"
+rayon = "1.7.0"
+
+[dev-dependencies]
+anyhow = { version = "1", features = ["backtrace"] }
+candle-nn = { version = "0.8.4", features = ["cuda"] }
+rstest = "0.23"
