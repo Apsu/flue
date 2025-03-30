@@ -954,7 +954,6 @@ version = "0.1.0"
 dependencies = [
  "accelerate-src",
  "anyhow",
- "base64 0.22.1",
  "candle-core",
  "candle-flash-attn",
  "candle-nn",
@@ -965,6 +964,7 @@ dependencies = [
  "safetensors 0.5.3",
  "serde",
  "serde_json",
+ "serde_plain",
  "tokenizers",
  "tokio",
 ]
