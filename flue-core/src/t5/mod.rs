@@ -267,7 +267,6 @@ struct T5Attention {
     relative_attention_max_distance: usize,
     inner_dim: usize,
     use_cache: bool,
-    kv_cache: Option<(Tensor, Tensor)>,
 }
 
 impl T5Attention {
@@ -304,12 +303,11 @@ impl T5Attention {
             relative_attention_max_distance: cfg.relative_attention_max_distance,
             inner_dim,
             use_cache: cfg.use_cache && decoder,
-            kv_cache: None,
         })
     }
 
     fn forward(
-        &mut self,
+        &self,
         xs: &Tensor,
         position_bias: Option<&Tensor>,
         key_value_states: Option<&Tensor>,
@@ -330,20 +328,13 @@ impl T5Attention {
             .reshape((b_sz, q_len, self.n_heads, self.d_kv))?
             .transpose(1, 2)?
             .contiguous()?;
-        let mut k = k
+        let k = k
             .reshape((b_sz, kv_len, self.n_heads, self.d_kv))?
             .transpose(1, 2)?;
-        let mut v = v
+        let v = v
             .reshape((b_sz, kv_len, self.n_heads, self.d_kv))?
             .transpose(1, 2)?;
 
-        if self.use_cache && key_value_states.is_none() {
-            if let Some((kv_cache_k, kv_cache_v)) = &self.kv_cache {
-                k = Tensor::cat(&[kv_cache_k, &k], 2)?;
-                v = Tensor::cat(&[kv_cache_v, &v], 2)?;
-            };
-            self.kv_cache = Some((k.clone(), v.clone()));
-        };
         let k = k.contiguous()?;
         let v = v.contiguous()?;
         // TODO: Use flash_attn.
@@ -448,7 +439,7 @@ impl T5LayerSelfAttention {
     }
 
     fn forward(
-        &mut self,
+        &self,
         xs: &Tensor,
         position_bias: Option<&Tensor>,
         mask: Option<&Tensor>,
@@ -480,7 +471,7 @@ impl T5LayerCrossAttention {
     }
 
     fn forward(
-        &mut self,
+        &self,
         hidden_states: &Tensor,
         position_bias: Option<&Tensor>,
         key_value_states: &Tensor,
@@ -529,7 +520,7 @@ impl T5Block {
     }
 
     fn forward(
-        &mut self,
+        &self,
         xs: &Tensor,
         position_bias: Option<&Tensor>,
         encoder_hidden_states: Option<&Tensor>,
@@ -550,7 +541,7 @@ impl T5Block {
         };
         let (mut xs, position_bias) = self.self_attn.forward(xs, position_bias, mask.as_ref())?;
         // TODO: clamp for f16?
-        if let Some(cross_attn) = &mut self.cross_attn {
+        if let Some(cross_attn) = &self.cross_attn {
             (xs, _) = cross_attn.forward(&xs, None, encoder_hidden_states.unwrap())?;
             // TODO: clamp for f16?
         }
@@ -585,7 +576,7 @@ impl T5Stack {
     }
 
     fn forward(
-        &mut self,
+        &self,
         input_ids: &Tensor,
         encoder_hidden_states: Option<&Tensor>,
     ) -> Result<Tensor> {
@@ -593,7 +584,7 @@ impl T5Stack {
     }
 
     fn forward_dt(
-        &mut self,
+        &self,
         input_ids: &Tensor,
         encoder_hidden_states: Option<&Tensor>,
         dtype: Option<DType>,
@@ -605,7 +596,7 @@ impl T5Stack {
         };
         let mut hidden_states = input_embeds;
         let mut position_bias = None;
-        for block in self.block.iter_mut() {
+        for block in self.block.iter() {
             (hidden_states, position_bias) = block.forward(
                 &hidden_states,
                 position_bias.as_ref(),
@@ -636,7 +627,7 @@ impl T5EncoderModel {
         Ok(Self { encoder })
     }
 
-    pub fn forward(&mut self, input_ids: &Tensor) -> Result<Tensor> {
+    pub fn forward(&self, input_ids: &Tensor) -> Result<Tensor> {
         self.encoder.forward(input_ids, None)
     }
 }
