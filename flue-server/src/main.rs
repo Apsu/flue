@@ -1,9 +1,9 @@
 use axum::{
-    Router,
     extract::{Json, State},
     http::StatusCode,
     response::IntoResponse,
     routing::post,
+    Router,
 };
 use candle_core::{DType, Device, Error, IndexOp};
 use candle_nn::Module;
