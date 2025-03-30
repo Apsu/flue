@@ -1,6 +1,6 @@
-[submodule "flue-flash-attn/cutlass"]
+[submodule "flue-flash-attn-v2/cutlass"]
 	url = https://github.com/NVIDIA/cutlass.git
-	path = flue-flash-attn/cutlass
+	path = flue-flash-attn-v2/cutlass
 [submodule "flue-flash-attn-v3/cutlass"]
 	url = https://github.com/NVIDIA/cutlass.git
 	path = flue-flash-attn-v3/cutlass
