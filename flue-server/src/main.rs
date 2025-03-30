@@ -16,10 +16,32 @@ use candle_transformers::models::{
     },
     t5::{self, T5EncoderModel},
 };
+use clap::Parser;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tokenizers::Tokenizer;
 use tokio::{self, net::TcpListener};
+
+// Define command line arguments
+#[derive(Parser, Debug)]
+#[command(author, version, about = "Flue image generation server")]
+struct Args {
+    /// Use CPU instead of GPU
+    #[arg(long)]
+    cpu: bool,
+
+    /// Model variant to use
+    #[arg(long, default_value = "black-forest-labs/FLUX.1-schnell")]
+    model: String,
+
+    /// Host address to bind the server to
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Port to bind the server to
+    #[arg(long, default_value_t = 8000)]
+    port: u16,
+}
 
 // Define the request/response types.
 #[derive(Deserialize)]
@@ -88,7 +110,7 @@ fn generate_image(
     let mut t5_tokens = state
         .t5_tokenizer
         .encode(params.prompt.as_str(), true)
-        .map_err(Error::msg)? // Encode the prompt
+        .map_err(Error::msg)?
         .get_ids()
         .to_vec();
     t5_tokens.resize(256, 0);
@@ -99,7 +121,7 @@ fn generate_image(
     let clip_tokens = state
         .clip_tokenizer
         .encode(params.prompt.as_str(), true)
-        .map_err(Error::msg)? // Encode the prompt
+        .map_err(Error::msg)?
         .get_ids()
         .to_vec();
     let input_token_ids_clip =
@@ -142,14 +164,16 @@ fn generate_image(
 
 #[tokio::main]
 async fn main() {
+    // Parse command line arguments
+    let args = Args::parse();
+
     // --- Load models once at startup ---
 
     // Create the HF hub API instance.
     let api = hf_hub::api::sync::Api::new().expect("failed to create hf hub API");
 
-    // Configure device.
-    let cpu = false; // change if needed
-    let device = flue_core::device(cpu).expect("failed to set up device");
+    // Configure device and data type.
+    let device = flue_core::device(args.cpu).expect("failed to set up device");
     let dtype = device.bf16_default_to_f32();
 
     // --- Load T5 Model and Tokenizer ---
@@ -207,11 +231,8 @@ async fn main() {
     let clip_tokenizer = tokenizers::Tokenizer::from_file(clip_tokenizer_filename)
         .expect("failed to load CLIP tokenizer");
 
-    // --- Load Autoencoder ---
-    let bf_repo = {
-        let name = "black-forest-labs/FLUX.1-schnell";
-        api.repo(hf_hub::Repo::model(name.to_string()))
-    };
+    // --- Load Autoencoder and Flux Model ---
+    let bf_repo = api.repo(hf_hub::Repo::model(args.model.clone()));
     let autoencoder_model_file = bf_repo
         .get("ae.safetensors")
         .expect("failed to get autoencoder model file");
@@ -223,7 +244,6 @@ async fn main() {
     let autoencoder =
         AutoEncoder::new(&autoencoder_config, autoencoder_vb).expect("failed to load autoencoder");
 
-    // --- Load Flux Model (non-quantized) ---
     let flux_model_file = bf_repo
         .get("flux1-schnell.safetensors")
         .expect("failed to get flux model file");
@@ -252,7 +272,9 @@ async fn main() {
         .route("/v1/images/generations", post(generate_image_handler))
         .with_state(shared_state);
 
-    let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    // --- Start the server ---
+    let bind_address = format!("{}:{}", args.host, args.port);
+    let listener = TcpListener::bind(&bind_address).await.unwrap();
     println!("Starting server on {}", listener.local_addr().unwrap());
     axum::serve(listener, app.into_make_service())
         .await
