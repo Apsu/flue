@@ -64,32 +64,12 @@ impl Module for Activation {
 pub struct ClipTextConfig {
     pub vocab_size: usize,
     pub embed_dim: usize,
-    pub activation: Activation,
     pub intermediate_size: usize,
     pub max_position_embeddings: usize,
-    pub pad_with: Option<String>,
     pub num_hidden_layers: usize,
     pub num_attention_heads: usize,
     #[allow(dead_code)]
     pub projection_dim: usize,
-}
-
-impl ClipTextConfig {
-    // The config details can be found in the "text_config" section of this json file:
-    // https://huggingface.co/openai/clip-vit-large-patch14/blob/main/config.json
-    pub fn vit_base_patch32() -> Self {
-        Self {
-            vocab_size: 49408,
-            embed_dim: 512,
-            intermediate_size: 2048,
-            max_position_embeddings: 77,
-            pad_with: None,
-            num_hidden_layers: 12,
-            num_attention_heads: 8,
-            projection_dim: 512,
-            activation: Activation::QuickGelu,
-        }
-    }
 }
 
 // ClipTextEmbeddings mostly based on the existing implementation in the stable diffision model.
@@ -296,20 +276,6 @@ impl ClipEncoder {
             xs = layer.forward(&xs, causal_attention_mask)?;
         }
         Ok(xs)
-    }
-    // required by LLaVA
-    pub fn output_hidden_states(
-        &self,
-        xs: &Tensor,
-        causal_attention_mask: Option<&Tensor>,
-    ) -> Result<Vec<Tensor>> {
-        let mut xs = xs.clone();
-        let mut hidden_states = Vec::new();
-        for layer in self.layers.iter() {
-            xs = layer.forward(&xs, causal_attention_mask)?;
-            hidden_states.push(xs.clone());
-        }
-        Ok(hidden_states)
     }
 }
 

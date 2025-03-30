@@ -4,7 +4,6 @@ use candle_nn::{conv2d, group_norm, Conv2d, GroupNorm, VarBuilder};
 // https://github.com/black-forest-labs/flux/blob/727e3a71faf37390f318cf9434f0939653302b60/src/flux/modules/autoencoder.py#L9
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub resolution: usize,
     pub in_channels: usize,
     pub ch: usize,
     pub out_ch: usize,
@@ -15,11 +14,11 @@ pub struct Config {
     pub shift_factor: f64,
 }
 
+#[allow(dead_code)]
 impl Config {
     // https://github.com/black-forest-labs/flux/blob/727e3a71faf37390f318cf9434f0939653302b60/src/flux/util.py#L47
     pub fn dev() -> Self {
         Self {
-            resolution: 256,
             in_channels: 3,
             ch: 128,
             out_ch: 3,
@@ -34,7 +33,6 @@ impl Config {
     // https://github.com/black-forest-labs/flux/blob/727e3a71faf37390f318cf9434f0939653302b60/src/flux/util.py#L79
     pub fn schnell() -> Self {
         Self {
-            resolution: 256,
             in_channels: 3,
             ch: 128,
             out_ch: 3,

@@ -12,7 +12,7 @@ mod model;
 mod sampling;
 
 use crate::{
-    clip::{self, ClipTextConfig, ClipTextTransformer},
+    clip::{ClipTextConfig, ClipTextTransformer},
     select_best_device,
     t5::{self, T5EncoderModel},
     tensor_to_image, DeviceMap, GenerationRequest, Loader, ModelLike,
@@ -157,11 +157,9 @@ impl Loader for FluxLoader {
         let clip_config = ClipTextConfig {
             vocab_size: 49408,
             projection_dim: 768,
-            activation: clip::Activation::QuickGelu,
             intermediate_size: 3072,
             embed_dim: 768,
             max_position_embeddings: 77,
-            pad_with: None,
             num_hidden_layers: 12,
             num_attention_heads: 12,
         };

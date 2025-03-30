@@ -6,8 +6,6 @@ mod clip;
 mod flux;
 mod t5;
 
-use std::future::Future;
-
 pub use device_map::*;
 pub use flux::FluxLoader;
 use image::DynamicImage;

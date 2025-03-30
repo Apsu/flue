@@ -123,37 +123,6 @@ impl Default for Config {
     }
 }
 
-impl Config {
-    // https://huggingface.co/facebook/musicgen-small/blob/495da4ad086b3416a27c6187f9239f9fd96f3962/config.json#L184
-    pub fn musicgen_small() -> Self {
-        Self {
-            d_ff: 3072,
-            d_kv: 64,
-            d_model: 768,
-            dropout_rate: 0.1,
-            eos_token_id: 1,
-            feed_forward_proj: ActivationWithOptionalGating {
-                gated: false,
-                activation: Activation::Relu,
-            },
-            tie_word_embeddings: true,
-            initializer_factor: 1.0,
-            is_decoder: false,
-            is_encoder_decoder: true,
-            layer_norm_epsilon: 1e-6,
-            num_decoder_layers: Some(12),
-            num_heads: 12,
-            num_layers: 12,
-            pad_token_id: 0,
-            decoder_start_token_id: Some(0),
-            relative_attention_max_distance: 128,
-            relative_attention_num_buckets: 32,
-            use_cache: true,
-            vocab_size: 32128,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 struct T5LayerNorm {
     weight: Tensor,
@@ -650,7 +619,6 @@ impl T5Stack {
 #[derive(Debug, Clone)]
 pub struct T5EncoderModel {
     encoder: T5Stack,
-    device: Device,
 }
 
 impl T5EncoderModel {
@@ -665,117 +633,10 @@ impl T5EncoderModel {
         let shared = embedding(cfg.vocab_size, cfg.d_model, shared_vb)?;
         let shared = Arc::new(shared);
         let encoder = T5Stack::load(false, vb.pp("encoder"), &shared, cfg)?;
-        Ok(Self {
-            encoder,
-            device: vb.device().clone(),
-        })
+        Ok(Self { encoder })
     }
 
     pub fn forward(&mut self, input_ids: &Tensor) -> Result<Tensor> {
         self.encoder.forward(input_ids, None)
-    }
-
-    pub fn forward_dt(&mut self, input_ids: &Tensor, dtype: Option<DType>) -> Result<Tensor> {
-        self.encoder.forward_dt(input_ids, None, dtype)
-    }
-
-    pub fn device(&self) -> &Device {
-        &self.device
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct T5ForConditionalGeneration {
-    encoder: T5Stack,
-    decoder: T5Stack,
-    d_model: usize,
-    tie_word_embeddings: bool,
-    lm_head: Option<Linear>,
-    shared: Arc<Embedding>,
-    device: Device,
-}
-
-impl T5ForConditionalGeneration {
-    pub fn load(vb: VarBuilder, cfg: &Config) -> Result<Self> {
-        assert!(cfg.is_encoder_decoder);
-        let d_model = cfg.d_model;
-        let shared_vb = if vb.contains_tensor("shared.weight") {
-            vb.pp("shared")
-        } else {
-            vb.pp("decoder").pp("embed_tokens")
-        };
-        let shared = embedding(cfg.vocab_size, cfg.d_model, shared_vb)?;
-        let shared = Arc::new(shared);
-
-        let mut encoder_cfg = cfg.clone();
-        encoder_cfg.is_decoder = false;
-        encoder_cfg.use_cache = false;
-        encoder_cfg.is_encoder_decoder = false;
-        let encoder = T5Stack::load(false, vb.pp("encoder"), &shared, &encoder_cfg)?;
-
-        let mut decoder_cfg = cfg.clone();
-        decoder_cfg.is_decoder = true;
-        decoder_cfg.is_encoder_decoder = false;
-        decoder_cfg.num_layers = cfg.num_decoder_layers.unwrap_or(cfg.num_layers);
-        let decoder = T5Stack::load(true, vb.pp("decoder"), &shared, &decoder_cfg)?;
-
-        let tie_word_embeddings = cfg.tie_word_embeddings;
-        let lm_head = if tie_word_embeddings {
-            None
-        } else {
-            Some(linear_no_bias(
-                cfg.d_model,
-                cfg.vocab_size,
-                vb.pp("lm_head"),
-            )?)
-        };
-
-        Ok(Self {
-            encoder,
-            decoder,
-            d_model,
-            tie_word_embeddings,
-            lm_head,
-            shared,
-            device: vb.device().clone(),
-        })
-    }
-
-    pub fn encode(&mut self, input_ids: &Tensor) -> Result<Tensor> {
-        self.encoder.forward(input_ids, None)
-    }
-
-    pub fn decode(
-        &mut self,
-        decoder_input_ids: &Tensor,
-        encoder_output: &Tensor,
-    ) -> Result<Tensor> {
-        let decoder_output = self
-            .decoder
-            .forward(decoder_input_ids, Some(encoder_output))?;
-
-        let scaling_factor = if self.tie_word_embeddings {
-            // Rescale output before projecting on vocab
-            // See https://github.com/tensorflow/mesh/blob/fa19d69eafc9a482aff0b59ddd96b025c0cb207d/mesh_tensorflow/transformer/transformer.py#L586
-            (self.d_model as f64).sqrt()
-        } else {
-            1.0
-        };
-        let sequence_output = ((decoder_output
-            .narrow(1, decoder_output.dim(1)? - 1, 1)?
-            .squeeze(1)?)
-            * scaling_factor)?;
-        let output = {
-            match self.lm_head {
-                None => sequence_output.matmul(&self.shared.embeddings().t()?)?,
-                Some(ref lm_head) => lm_head.forward(&sequence_output)?,
-            }
-        };
-        Ok(output)
-    }
-
-    pub fn forward(&mut self, input_ids: &Tensor, decoder_input_ids: &Tensor) -> Result<Tensor> {
-        let encoder_output = self.encode(input_ids)?;
-        self.decode(decoder_input_ids, &encoder_output)
     }
 }
