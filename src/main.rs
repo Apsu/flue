@@ -142,8 +142,6 @@ fn generate_image(
 
 #[tokio::main]
 async fn main() {
-    #[cfg(feature = "cuda")]
-    candle_core::quantized::cuda::set_force_dmmv(false);
     // --- Load models once at startup ---
 
     // Create the HF hub API instance.
