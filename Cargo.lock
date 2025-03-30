@@ -945,7 +945,7 @@ dependencies = [
  "candle-core",
  "candle-nn",
  "candle-transformers",
- "flue-flash-attn",
+ "flue-flash-attn-v2",
  "flue-flash-attn-v3",
  "hf-hub",
  "image",
@@ -959,7 +959,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "flue-flash-attn"
+name = "flue-flash-attn-v2"
 version = "0.8.0"
 dependencies = [
  "anyhow",

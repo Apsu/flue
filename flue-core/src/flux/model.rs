@@ -62,11 +62,11 @@ fn layer_norm(dim: usize, vb: VarBuilder) -> Result<LayerNorm> {
     Ok(LayerNorm::new_no_bias(ws, 1e-6))
 }
 
-#[cfg(feature = "flash-attn")]
+#[cfg(feature = "flash-attn-v2")]
 fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
     let dim = q.dim(D::Minus1)?;
     let scale_factor = 1.0 / (dim as f64).sqrt();
-    flue_flash_attn::flash_attn(q, k, v, scale_factor as f32, false)
+    flue_flash_attn_v2::flash_attn(q, k, v, scale_factor as f32, false)
 }
 
 #[cfg(feature = "flash-attn-v3")]
@@ -76,7 +76,7 @@ fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Te
     flue_flash_attn_v3::flash_attn(q, k, v, scale_factor as f32, false, true)
 }
 
-#[cfg(not(any(feature = "flash-attn", feature = "flash-attn-v3")))]
+#[cfg(not(any(feature = "flash-attn-v2", feature = "flash-attn-v3")))]
 fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
     let dim = q.dim(D::Minus1)?;
     let scale_factor = 1.0 / (dim as f64).sqrt();
