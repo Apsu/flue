@@ -1,4 +1,5 @@
-# We use commit afa1772 - version 3.8.0
+# V2: use commit afa1772 - version 3.8.0
+# V3: use commit 4c42f73 as it works
 
 [submodule "flue-flash-attn-v2/cutlass"]
 	url = https://github.com/NVIDIA/cutlass.git

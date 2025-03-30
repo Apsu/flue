@@ -20,7 +20,8 @@ pub struct FlashAttn {
 
 impl FlashAttn {
     fn cuda_fwd_t<
-        T: candle_core::cuda_backend::CudaDType + candle_core::cuda_backend::cudarc::driver::DeviceRepr,
+        T: candle_core::cuda_backend::CudaDType
+            + candle_core::cuda_backend::cudarc::driver::DeviceRepr,
     >(
         &self,
         q: &candle_core::CudaStorage,
@@ -85,7 +86,9 @@ impl FlashAttn {
         }
         if head_size_og % 8 != 0 {
             // TODO: Handle head sizes that are not a multiple of 8 via some padding.
-            candle_core::bail!("only supports head sizes that are a multiple of 8 (got {head_size_og})")
+            candle_core::bail!(
+                "only supports head sizes that are a multiple of 8 (got {head_size_og})"
+            )
         }
         if num_heads % num_heads_k != 0 {
             candle_core::bail!("number of k/v heads {num_heads_k} must divide number of heads in query {num_heads}")
@@ -423,7 +426,8 @@ struct FlashAttnVarLen {
 
 impl FlashAttnVarLen {
     fn cuda_fwd_t<
-        T: candle_core::cuda_backend::CudaDType + candle_core::cuda_backend::cudarc::driver::DeviceRepr,
+        T: candle_core::cuda_backend::CudaDType
+            + candle_core::cuda_backend::cudarc::driver::DeviceRepr,
     >(
         &self,
         q: &candle_core::CudaStorage,
@@ -508,7 +512,9 @@ impl FlashAttnVarLen {
         }
         if head_size_og % 8 != 0 {
             // TODO: Handle head sizes that are not a multiple of 8 via some padding.
-            candle_core::bail!("only supports head sizes that are a multiple of 8 (got {head_size_og})")
+            candle_core::bail!(
+                "only supports head sizes that are a multiple of 8 (got {head_size_og})"
+            )
         }
         if num_heads % num_heads_k != 0 {
             candle_core::bail!("number of k/v heads {num_heads_k} must divide number of heads in query {num_heads}")
