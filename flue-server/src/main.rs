@@ -136,7 +136,7 @@ fn generate_image(
     // --- Postprocessing: clamp, scale, convert type, and convert to base64 PNG ---
     let img = ((decoded.clamp(-1f32, 1f32)? + 1.0)? * 127.5)?.to_dtype(DType::U8)?;
     let img_tensor = img.i(0)?;
-    let img_base64 = flue::tensor_to_base64_png(&img_tensor)?;
+    let img_base64 = flue_core::tensor_to_base64_png(&img_tensor)?;
     Ok(img_base64)
 }
 
@@ -149,7 +149,7 @@ async fn main() {
 
     // Configure device.
     let cpu = false; // change if needed
-    let device = flue::device(cpu).expect("failed to set up device");
+    let device = flue_core::device(cpu).expect("failed to set up device");
     let dtype = device.bf16_default_to_f32();
 
     // --- Load T5 Model and Tokenizer ---
