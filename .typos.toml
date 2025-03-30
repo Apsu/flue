@@ -7,4 +7,7 @@ extend-ignore-identifiers-re = [
 ]
 
 [files]
-extend-exclude = []
+extend-exclude = [
+    "flue-flash-attn-v2/*",
+    "flue-flash-attn-v3/*",
+]
