@@ -157,16 +157,13 @@ impl ClipAttention {
         let proj_shape = (bsz * self.num_attention_heads, seq_len, self.head_dim);
         let query_states = self
             .shape(&query_states, seq_len, bsz)?
-            .reshape(proj_shape)?
-            .to_dtype(DType::F32)?;
+            .reshape(proj_shape)?;
         let key_states = self
             .shape(&self.k_proj.forward(xs)?, seq_len, bsz)?
-            .reshape(proj_shape)?
-            .to_dtype(DType::F32)?;
+            .reshape(proj_shape)?;
         let value_states = self
             .shape(&self.v_proj.forward(xs)?, seq_len, bsz)?
-            .reshape(proj_shape)?
-            .to_dtype(DType::F32)?;
+            .reshape(proj_shape)?;
         let attn_weights = query_states.matmul(&key_states.transpose(1, 2)?)?;
 
         let src_len = key_states.dim(1)?;
@@ -285,6 +282,7 @@ pub struct ClipTextTransformer {
     embeddings: ClipTextEmbeddings,
     encoder: ClipEncoder,
     final_layer_norm: candle_nn::LayerNorm,
+    dtype: DType,
 }
 
 impl ClipTextTransformer {
@@ -296,6 +294,7 @@ impl ClipTextTransformer {
             embeddings,
             encoder,
             final_layer_norm,
+            dtype: vs.dtype(),
         })
     }
 
@@ -326,9 +325,10 @@ impl ClipTextTransformer {
         let input_ids = self.embeddings.forward(input_ids)?;
         let causal_attention_mask =
             Self::build_causal_attention_mask(bsz, seq_len, mask_after, input_ids.device())?;
-        let input_ids = self
-            .encoder
-            .forward(&input_ids, Some(&causal_attention_mask))?;
+        let input_ids = self.encoder.forward(
+            &input_ids,
+            Some(&causal_attention_mask.to_dtype(self.dtype)?),
+        )?;
         self.final_layer_norm.forward(&input_ids)
     }
 }
