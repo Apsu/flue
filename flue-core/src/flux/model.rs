@@ -72,7 +72,14 @@ fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Te
     let q = q.flatten_to(batch_dims.len() - 1)?;
     let k = k.flatten_to(batch_dims.len() - 1)?;
     let v = v.flatten_to(batch_dims.len() - 1)?;
-    let attn_scores = flue_flash_attn_v2::flash_attn(&q, &k, &v, scale_factor as f32, false)?;
+    let attn_scores = flue_flash_attn_v2::flash_attn(
+        &q.unsqueeze(0)?,
+        &k.unsqueeze(0)?,
+        &v.unsqueeze(0)?,
+        scale_factor as f32,
+        false,
+    )?
+    .squeeze(0)?;
     batch_dims.push(attn_scores.dim(D::Minus2)?);
     batch_dims.push(attn_scores.dim(D::Minus1)?);
     attn_scores.reshape(batch_dims)
@@ -88,7 +95,15 @@ fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Te
     let q = q.flatten_to(batch_dims.len() - 1)?;
     let k = k.flatten_to(batch_dims.len() - 1)?;
     let v = v.flatten_to(batch_dims.len() - 1)?;
-    let attn_scores = flue_flash_attn_v3::flash_attn(&q, &k, &v, scale_factor as f32, false, true)?;
+    let attn_scores = flue_flash_attn_v3::flash_attn(
+        &q.unsqueeze(0)?,
+        &k.unsqueeze(0)?,
+        &v.unsqueeze(0)?,
+        scale_factor as f32,
+        false,
+        true,
+    )?
+    .squeeze(0)?;
     batch_dims.push(attn_scores.dim(D::Minus2)?);
     batch_dims.push(attn_scores.dim(D::Minus1)?);
     attn_scores.reshape(batch_dims)
