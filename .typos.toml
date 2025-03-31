@@ -1,13 +1,13 @@
-[default]
-extend-ignore-identifiers-re = [
-    "mmaped",
-    "Nd",
-    "arange",
-    "nin",
-]
-
 [files]
 extend-exclude = [
+    ".git/",
     "flue-flash-attn-v2/*",
     "flue-flash-attn-v3/*",
 ]
+ignore-hidden = false
+
+[type.rust.extend-identifiers]
+arange = "arange"
+EmbedNd = "EmbedNd"
+from_mmaped_safetensors = "from_mmaped_safetensors"
+nin_shortcut = "nin_shortcut"

@@ -13,9 +13,9 @@ mod sampling;
 
 use crate::{
     clip::{ClipTextConfig, ClipTextTransformer},
-    select_best_device,
+    flux, select_best_device,
     t5::{self, T5EncoderModel},
-    tensor_to_image, DeviceMap, GenerationRequest, Loader, ModelLike,
+    tensor_to_image, DeviceMap, GenerationRequest, Loader, ModelLike, ModelVariant,
 };
 
 pub struct FluxModel {
@@ -29,16 +29,30 @@ pub struct FluxModel {
     flux_model: Flux,
 }
 
+#[derive(Debug, Clone)]
+pub enum FluxVariant {
+    Schnell, // For FLUX.1-schnell
+    Dev,     // For FLUX.1-dev (default)
+             // Add more variants if needed
+}
+
 impl ModelLike for FluxModel {
     fn run(&self, request: GenerationRequest) -> anyhow::Result<DynamicImage> {
-        // Set defaults.
-        let width = request.width.unwrap_or(1360);
-        let height = request.height.unwrap_or(768);
+        // Set parameters.
+        let width = request.width.unwrap_or(512);
+        let height = request.height.unwrap_or(512);
         let steps = request.steps.unwrap_or(4);
         let guidance = request.guidance.unwrap_or(0.0);
 
+        println!("Generating image with parameters:");
+        println!(" - Width: {}", width);
+        println!(" - Height: {}", height);
+        println!(" - Steps: {}", steps);
+        println!(" - Guidance: {}", guidance);
+
         // Optionally set seed for reproducibility.
         if let Some(seed) = request.seed {
+            println!(" - Seed: {}", seed);
             self.device.set_seed(seed)?;
         }
 
@@ -84,17 +98,17 @@ impl ModelLike for FluxModel {
             guidance,
         )?;
 
+        // --- Postprocess the latent image to obtain a valid image tensor ---
         let unpacked = sampling::unpack(&latent_img, height, width)?;
-        println!("Generated latent image");
 
         // --- Decode the latent image using the preloaded autoencoder ---
         let decoded = self.autoencoder.decode(&unpacked)?;
-        println!("Decoded image");
 
         // --- Postprocessing: clamp, scale, convert type, and convert to base64 PNG ---
         let img = ((decoded.clamp(-1f32, 1f32)? + 1.0)? * 127.5)?.to_dtype(DType::U8)?;
         let img_tensor = img.i(0)?;
 
+        println!("Image generation completed successfully.");
         tensor_to_image(&img_tensor)
     }
 }
@@ -104,11 +118,12 @@ pub struct FluxLoader;
 impl Loader for FluxLoader {
     type Model = FluxModel;
 
-    async fn load(api: Api, device_map: DeviceMap) -> Result<Self::Model> {
+    async fn load(variant: ModelVariant, api: Api, device_map: DeviceMap) -> Result<Self::Model> {
         // Configure device.
         let device = select_best_device(device_map).context("failed to set up device")?;
         let dtype = device.bf16_default_to_f32();
 
+        println!("Loading Flux and associated components...");
         // --- Load T5 Model and Tokenizer ---
         let t5_repo = api.repo(hf_hub::Repo::with_revision(
             "google/t5-v1_1-xxl".to_string(),
@@ -174,9 +189,15 @@ impl Loader for FluxLoader {
             .context("failed to load CLIP tokenizer")?;
 
         // --- Load Autoencoder ---
-        let bf_repo = {
-            let name = "black-forest-labs/FLUX.1-schnell";
-            api.repo(hf_hub::Repo::model(name.to_string()))
+        let bf_repo = match variant {
+            ModelVariant::Flux(flux::FluxVariant::Schnell) => {
+                let name = "black-forest-labs/FLUX.1-schnell";
+                api.repo(hf_hub::Repo::model(name.to_string()))
+            }
+            ModelVariant::Flux(flux::FluxVariant::Dev) => {
+                let name = "black-forest-labs/FLUX.1-dev";
+                api.repo(hf_hub::Repo::model(name.to_string()))
+            }
         };
         let autoencoder_model_file = bf_repo
             .get("ae.safetensors")
@@ -190,22 +211,33 @@ impl Loader for FluxLoader {
             )
             .context("failed to build autoencoder var builder")?
         };
-        let autoencoder_config = autoencoder::Config::schnell();
+        let autoencoder_config = match variant {
+            ModelVariant::Flux(flux::FluxVariant::Schnell) => autoencoder::Config::schnell(),
+            ModelVariant::Flux(flux::FluxVariant::Dev) => autoencoder::Config::dev(),
+        };
         let autoencoder = AutoEncoder::new(&autoencoder_config, autoencoder_vb)
             .context("failed to load autoencoder")?;
 
         // --- Load Flux Model (non-quantized) ---
-        let flux_model_file = bf_repo
-            .get("flux1-schnell.safetensors")
-            .await
-            .context("failed to get flux model file")?;
+        let flux_model_file = match variant {
+            ModelVariant::Flux(flux::FluxVariant::Schnell) => {
+                bf_repo.get("flux1-schnell.safetensors")
+            }
+            ModelVariant::Flux(flux::FluxVariant::Dev) => bf_repo.get("flux1-dev.safetensors"),
+        }
+        .await
+        .context("failed to get flux model file")?;
         let flux_vb = unsafe {
             candle_nn::VarBuilder::from_mmaped_safetensors(&[flux_model_file], dtype, &device)
                 .context("failed to build flux var builder")?
         };
-        let flux_config = model::Config::schnell();
+        let flux_config = match variant {
+            ModelVariant::Flux(flux::FluxVariant::Schnell) => model::Config::schnell(),
+            ModelVariant::Flux(flux::FluxVariant::Dev) => model::Config::dev(),
+        };
         let flux_model = Flux::new(&flux_config, flux_vb).context("failed to load flux model")?;
 
+        println!("Successfully loaded all components for Flux.");
         Ok(FluxModel {
             device,
             dtype,

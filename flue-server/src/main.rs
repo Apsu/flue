@@ -8,7 +8,7 @@ use axum::{
 };
 use base64::{prelude::BASE64_STANDARD, Engine};
 use clap::Parser;
-use flue_core::{DeviceMap, FluxLoader, GenerationRequest, Loader, ModelLike};
+use flue_core::{load_model, DeviceMap, GenerationRequest, ModelLike};
 use hf_hub::api::tokio::Api;
 use image::DynamicImage;
 use serde::Serialize;
@@ -23,7 +23,7 @@ struct Args {
     #[arg(long)]
     cpu: bool,
 
-    /// Model variant to use
+    /// Model to use
     #[arg(long, default_value = "black-forest-labs/FLUX.1-schnell")]
     model: String,
 
@@ -75,10 +75,19 @@ async fn generate_image(params: GenerationRequest, state: &AppState) -> Result<S
 async fn main() -> Result<()> {
     let args = Args::parse();
 
-    let model = FluxLoader::load(Api::new()?, DeviceMap::default()).await?;
+    // Use device map based on CPU flag
+    let device_map = if args.cpu {
+        println!("Using CPU for inference");
+        DeviceMap::ForceCpu
+    } else {
+        DeviceMap::default()
+    };
+
+    // Use the factory to load the appropriate model
+    let model = load_model(&args.model, Api::new()?, device_map).await?;
 
     // Build application state and wrap in Arc.
-    let app_state = AppState(Arc::new(model));
+    let app_state = AppState(model);
     let shared_state = Arc::new(app_state);
 
     // --- Build axum router with shared state ---
@@ -89,7 +98,7 @@ async fn main() -> Result<()> {
     // --- Start the server ---
     let bind_address = format!("{}:{}", args.host, args.port);
     let listener = TcpListener::bind(&bind_address).await.unwrap();
-    println!("Starting server on {}", listener.local_addr().unwrap());
+    println!("Started server on {}", listener.local_addr().unwrap());
     axum::serve(listener, app.into_make_service()).await?;
 
     Ok(())
