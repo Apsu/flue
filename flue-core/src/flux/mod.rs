@@ -31,14 +31,21 @@ pub struct FluxModel {
 
 impl ModelLike for FluxModel {
     fn run(&self, request: GenerationRequest) -> anyhow::Result<DynamicImage> {
-        // Set defaults.
-        let width = request.width.unwrap_or(1360);
-        let height = request.height.unwrap_or(768);
+        // Set parameters.
+        let width = request.width.unwrap_or(512);
+        let height = request.height.unwrap_or(512);
         let steps = request.steps.unwrap_or(4);
         let guidance = request.guidance.unwrap_or(0.0);
 
+        println!("Generating image with parameters:");
+        println!(" - Width: {}", width);
+        println!(" - Height: {}", height);
+        println!(" - Steps: {}", steps);
+        println!(" - Guidance: {}", guidance);
+
         // Optionally set seed for reproducibility.
         if let Some(seed) = request.seed {
+            println!(" - Seed: {}", seed);
             self.device.set_seed(seed)?;
         }
 
@@ -84,17 +91,17 @@ impl ModelLike for FluxModel {
             guidance,
         )?;
 
+        // --- Postprocess the latent image to obtain a valid image tensor ---
         let unpacked = sampling::unpack(&latent_img, height, width)?;
-        println!("Generated latent image");
 
         // --- Decode the latent image using the preloaded autoencoder ---
         let decoded = self.autoencoder.decode(&unpacked)?;
-        println!("Decoded image");
 
         // --- Postprocessing: clamp, scale, convert type, and convert to base64 PNG ---
         let img = ((decoded.clamp(-1f32, 1f32)? + 1.0)? * 127.5)?.to_dtype(DType::U8)?;
         let img_tensor = img.i(0)?;
 
+        println!("Image generation completed successfully.");
         tensor_to_image(&img_tensor)
     }
 }
@@ -109,6 +116,7 @@ impl Loader for FluxLoader {
         let device = select_best_device(device_map).context("failed to set up device")?;
         let dtype = device.bf16_default_to_f32();
 
+        println!("Loading Flux and associated components...");
         // --- Load T5 Model and Tokenizer ---
         let t5_repo = api.repo(hf_hub::Repo::with_revision(
             "google/t5-v1_1-xxl".to_string(),
@@ -206,6 +214,7 @@ impl Loader for FluxLoader {
         let flux_config = model::Config::schnell();
         let flux_model = Flux::new(&flux_config, flux_vb).context("failed to load flux model")?;
 
+        println!("Successfully loaded all components for Flux.");
         Ok(FluxModel {
             device,
             dtype,

@@ -90,7 +90,7 @@ async fn main() -> Result<()> {
     // --- Start the server ---
     let bind_address = format!("{}:{}", args.host, args.port);
     let listener = TcpListener::bind(&bind_address).await.unwrap();
-    println!("Starting server on {}", listener.local_addr().unwrap());
+    println!("Started server on {}", listener.local_addr().unwrap());
     axum::serve(listener, app.into_make_service()).await?;
 
     Ok(())
