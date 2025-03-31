@@ -66,14 +66,32 @@ fn layer_norm(dim: usize, vb: VarBuilder) -> Result<LayerNorm> {
 fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
     let dim = q.dim(D::Minus1)?;
     let scale_factor = 1.0 / (dim as f64).sqrt();
-    flue_flash_attn_v2::flash_attn(q, k, v, scale_factor as f32, false)
+    let mut batch_dims = q.dims().to_vec();
+    batch_dims.pop();
+    batch_dims.pop();
+    let q = q.flatten_to(batch_dims.len() - 1)?;
+    let k = k.flatten_to(batch_dims.len() - 1)?;
+    let v = v.flatten_to(batch_dims.len() - 1)?;
+    let attn_scores = flue_flash_attn_v2::flash_attn(&q, &k, &v, scale_factor as f32, false)?;
+    batch_dims.push(attn_scores.dim(D::Minus2)?);
+    batch_dims.push(attn_scores.dim(D::Minus1)?);
+    attn_scores.reshape(batch_dims)
 }
 
 #[cfg(feature = "flash-attn-v3")]
 fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
     let dim = q.dim(D::Minus1)?;
     let scale_factor = 1.0 / (dim as f64).sqrt();
-    flue_flash_attn_v3::flash_attn(q, k, v, scale_factor as f32, false, true)
+    let mut batch_dims = q.dims().to_vec();
+    batch_dims.pop();
+    batch_dims.pop();
+    let q = q.flatten_to(batch_dims.len() - 1)?;
+    let k = k.flatten_to(batch_dims.len() - 1)?;
+    let v = v.flatten_to(batch_dims.len() - 1)?;
+    let attn_scores = flue_flash_attn_v3::flash_attn(&q, &k, &v, scale_factor as f32, false, true)?;
+    batch_dims.push(attn_scores.dim(D::Minus2)?);
+    batch_dims.push(attn_scores.dim(D::Minus1)?);
+    attn_scores.reshape(batch_dims)
 }
 
 #[cfg(not(any(feature = "flash-attn-v2", feature = "flash-attn-v3")))]
