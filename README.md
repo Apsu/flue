@@ -22,7 +22,7 @@ Prerequisites
 
 Clone and build Flue:
 ```sh
-git clone https://github.com/your-org/flue.git
+git clone https://github.com/Apsu/flue.git
 cd flue
 cargo build --release --features cuda
 ```
@@ -82,4 +82,4 @@ Contributions are welcome! Please open issues and pull requests directly on this
 
 ## License
 
-Flue is licensed under the MIT License.
+Flue is licensed under [MIT](LICENSE).
