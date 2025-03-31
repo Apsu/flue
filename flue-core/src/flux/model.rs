@@ -67,12 +67,11 @@ fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Te
     let dim = q.dim(D::Minus1)?;
     let scale_factor = 1.0 / (dim as f64).sqrt();
     let batch_dims = q.dims().to_vec();
-    let init_dtype = q.dtype();
 
-    // Convert to F16 and reshape for flash attention
-    let q = q.to_dtype(DType::F16)?.transpose(1, 2)?;
-    let k = k.to_dtype(DType::F16)?.transpose(1, 2)?;
-    let v = v.to_dtype(DType::F16)?.transpose(1, 2)?;
+    // Reshape for flash attention
+    let q = q.transpose(1, 2)?;
+    let k = k.transpose(1, 2)?;
+    let v = v.transpose(1, 2)?;
 
     // Use appropriate flash attention function
     #[cfg(feature = "flash-attn-v2")]
@@ -82,10 +81,7 @@ fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Te
     let attn = flue_flash_attn_v3::flash_attn(&q, &k, &v, scale_factor as f32, false, true)?;
 
     // Transform back to original format
-    let attn = attn.transpose(1, 2)?.to_dtype(init_dtype)?;
-
-    // Reshape to match expected output dimensions
-    attn.reshape(batch_dims)
+    attn.transpose(1, 2)?.reshape(batch_dims)
 }
 
 #[cfg(not(any(feature = "flash-attn-v2", feature = "flash-attn-v3")))]
