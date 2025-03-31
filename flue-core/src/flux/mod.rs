@@ -212,23 +212,19 @@ impl Loader for FluxLoader {
             .context("failed to build autoencoder var builder")?
         };
         let autoencoder_config = match variant {
-            ModelVariant::Flux(flux::FluxVariant::Schnell) => {
-                // For FLUX.1-schnell
-                autoencoder::Config::schnell()
-            }
-            ModelVariant::Flux(flux::FluxVariant::Dev) => {
-                // For FLUX.1-dev (default)
-                autoencoder::Config::dev()
-            }
+            ModelVariant::Flux(flux::FluxVariant::Schnell) => autoencoder::Config::schnell(),
+            ModelVariant::Flux(flux::FluxVariant::Dev) => autoencoder::Config::dev(),
         };
         let autoencoder = AutoEncoder::new(&autoencoder_config, autoencoder_vb)
             .context("failed to load autoencoder")?;
 
         // --- Load Flux Model (non-quantized) ---
-        let flux_model_file = bf_repo
-            .get("flux1-schnell.safetensors")
-            .await
-            .context("failed to get flux model file")?;
+        let flux_model_file = match variant {
+            ModelVariant::Flux(flux::FluxVariant::Schnell) => bf_repo.get("flux1-schnell.safetensors"),
+            ModelVariant::Flux(flux::FluxVariant::Dev) => bf_repo.get("flux1-dev.safetensors"),
+        }
+        .await
+        .context("failed to get flux model file")?;
         let flux_vb = unsafe {
             candle_nn::VarBuilder::from_mmaped_safetensors(&[flux_model_file], dtype, &device)
                 .context("failed to build flux var builder")?
