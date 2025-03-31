@@ -220,7 +220,9 @@ impl Loader for FluxLoader {
 
         // --- Load Flux Model (non-quantized) ---
         let flux_model_file = match variant {
-            ModelVariant::Flux(flux::FluxVariant::Schnell) => bf_repo.get("flux1-schnell.safetensors"),
+            ModelVariant::Flux(flux::FluxVariant::Schnell) => {
+                bf_repo.get("flux1-schnell.safetensors")
+            }
             ModelVariant::Flux(flux::FluxVariant::Dev) => bf_repo.get("flux1-dev.safetensors"),
         }
         .await
