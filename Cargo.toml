@@ -3,6 +3,10 @@ members = [
     "flue-core",
     "flue-server",
 ]
+exclude = [
+    "flue-flash-attn-v2",
+    "flue-flash-attn-v3",
+]
 resolver = "2"
 
 [workspace.package]
@@ -20,8 +24,10 @@ accelerate-src = { version = "0.3.2" }
 anyhow = "1.0.97"
 axum = "0.8.3"
 base64 = "0.22.1"
+flue-core = { path = "./flue-core", version = "0.1.0" }
 candle-core = { version = "0.8.4" }
-candle-flash-attn = { version = "0.8.4" } # For flash attention support, requires CUDA or Accelerate
+flue-flash-attn-v2 = { path = "./flue-flash-attn-v2", version = "0.8.0" }
+flue-flash-attn-v3 = { path = "./flue-flash-attn-v3", version = "0.8.0" }
 candle-nn = { version = "0.8.4" }
 candle-transformers = { version = "0.8.4" }
 clap = { version = "4.5.34", features = ["derive"] }

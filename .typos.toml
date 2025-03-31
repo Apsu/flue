@@ -1,6 +1,8 @@
 [files]
 extend-exclude = [
     ".git/",
+    "flue-flash-attn-v2/*",
+    "flue-flash-attn-v3/*",
 ]
 ignore-hidden = false
 
