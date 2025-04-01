@@ -154,25 +154,14 @@ impl ClipAttention {
         let (bsz, seq_len, embed_dim) = xs.dims3()?;
 
         let query_states = (self.q_proj.forward(xs)? * self.scale)?;
-        let proj_shape = (bsz * self.num_attention_heads, seq_len, self.head_dim);
-        let query_states = self
-            .shape(&query_states, seq_len, bsz)?
-            .reshape(proj_shape)?;
-        let key_states = self
-            .shape(&self.k_proj.forward(xs)?, seq_len, bsz)?
-            .reshape(proj_shape)?;
-        let value_states = self
-            .shape(&self.v_proj.forward(xs)?, seq_len, bsz)?
-            .reshape(proj_shape)?;
-        let attn_weights = query_states.matmul(&key_states.transpose(1, 2)?)?;
+        let query_states = self.shape(&query_states, seq_len, bsz)?;
+        let key_states = self.shape(&self.k_proj.forward(xs)?, seq_len, bsz)?;
+        let value_states = self.shape(&self.v_proj.forward(xs)?, seq_len, bsz)?;
 
-        let src_len = key_states.dim(1)?;
+        let attn_weights = query_states.matmul(&key_states.t()?)?;
 
         let attn_weights = if let Some(causal_attention_mask) = causal_attention_mask {
-            attn_weights
-                .reshape((bsz, self.num_attention_heads, seq_len, src_len))?
-                .broadcast_add(causal_attention_mask)?
-                .reshape((bsz * self.num_attention_heads, seq_len, src_len))?
+            attn_weights.broadcast_add(causal_attention_mask)?
         } else {
             attn_weights
         };
@@ -181,7 +170,6 @@ impl ClipAttention {
 
         let attn_output = attn_weights.matmul(&value_states)?.to_dtype(in_dtype)?;
         let attn_output = attn_output
-            .reshape((bsz, self.num_attention_heads, seq_len, self.head_dim))?
             .transpose(1, 2)?
             .reshape((bsz, seq_len, embed_dim))?;
         self.out_proj.forward(&attn_output)
