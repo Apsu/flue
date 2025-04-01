@@ -149,7 +149,7 @@ pub(crate) fn timestep_embedding(t: &Tensor, dim: usize, dtype: DType) -> Result
     let dev = t.device();
     let half = dim / 2;
     let t = (t * TIME_FACTOR)?;
-    let arange = Tensor::arange(0, half as u32, dev)?.to_dtype(candle_core::DType::F32)?;
+    let arange = (Tensor::ones(half, DType::F32, dev)?.cumsum(0)? - 1.)?;
     let freqs = (arange * (-MAX_PERIOD.ln() / half as f64))?.exp()?;
     let args = t
         .unsqueeze(1)?
@@ -553,7 +553,7 @@ pub struct Flux {
     time_in: MlpEmbedder,
     vector_in: MlpEmbedder,
     guidance_in: Option<MlpEmbedder>,
-    pe_embedder: EmbedNd,
+    pub pe_embedder: EmbedNd,
     double_blocks: Vec<DoubleStreamBlock>,
     single_blocks: Vec<SingleStreamBlock>,
     final_layer: LastLayer,
@@ -604,9 +604,8 @@ impl Flux {
     pub fn forward(
         &self,
         img: &Tensor,
-        img_ids: &Tensor,
         txt: &Tensor,
-        txt_ids: &Tensor,
+        pe: &Tensor,
         timesteps: &Tensor,
         y: &Tensor,
         guidance: Option<&Tensor>,
@@ -618,10 +617,6 @@ impl Flux {
             candle_core::bail!("unexpected shape for img {:?}", img.shape())
         }
         let dtype = img.dtype();
-        let pe = {
-            let ids = Tensor::cat(&[txt_ids, img_ids], 1)?;
-            ids.apply(&self.pe_embedder)?
-        };
         let mut txt = txt.apply(&self.txt_in)?;
         let mut img = img.apply(&self.img_in)?;
         let vec_ = timestep_embedding(timesteps, 256, dtype)?.apply(&self.time_in)?;
