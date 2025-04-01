@@ -150,7 +150,6 @@ impl ClipAttention {
     }
 
     fn forward(&self, xs: &Tensor, causal_attention_mask: Option<&Tensor>) -> Result<Tensor> {
-        let in_dtype = xs.dtype();
         let (bsz, seq_len, embed_dim) = xs.dims3()?;
 
         let query_states = (self.q_proj.forward(xs)? * self.scale)?;
@@ -158,17 +157,35 @@ impl ClipAttention {
         let key_states = self.shape(&self.k_proj.forward(xs)?, seq_len, bsz)?;
         let value_states = self.shape(&self.v_proj.forward(xs)?, seq_len, bsz)?;
 
-        let attn_weights = query_states.matmul(&key_states.t()?)?;
+        let attn_output = if cfg!(feature = "flash-attn-v2") || cfg!(feature = "flash-attn-v3") {
+            // Reshape for flash attention
+            let q = query_states.transpose(1, 2)?;
+            let k = key_states.transpose(1, 2)?;
+            let v = value_states.transpose(1, 2)?;
 
-        let attn_weights = if let Some(causal_attention_mask) = causal_attention_mask {
-            attn_weights.broadcast_add(causal_attention_mask)?
+            // Use appropriate flash attention function
+            #[cfg(feature = "flash-attn-v2")]
+            let attn = flue_flash_attn_v2::flash_attn(&q, &k, &v, 1., false)?;
+
+            #[cfg(feature = "flash-attn-v3")]
+            let attn = flue_flash_attn_v3::flash_attn(&q, &k, &v, 1., false, true)?;
+
+            // Transform back to original format
+            attn.transpose(1, 2)?
         } else {
-            attn_weights
+            let attn_weights = query_states.matmul(&key_states.t()?)?;
+
+            let attn_weights = if let Some(causal_attention_mask) = causal_attention_mask {
+                attn_weights.broadcast_add(causal_attention_mask)?
+            } else {
+                attn_weights
+            };
+
+            let attn_weights = candle_nn::ops::softmax(&attn_weights, D::Minus1)?;
+
+            attn_weights.matmul(&value_states)?
         };
 
-        let attn_weights = candle_nn::ops::softmax(&attn_weights, D::Minus1)?;
-
-        let attn_output = attn_weights.matmul(&value_states)?.to_dtype(in_dtype)?;
         let attn_output = attn_output
             .transpose(1, 2)?
             .reshape((bsz, seq_len, embed_dim))?;
