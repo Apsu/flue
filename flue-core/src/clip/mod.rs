@@ -150,41 +150,58 @@ impl ClipAttention {
     }
 
     fn forward(&self, xs: &Tensor, causal_attention_mask: Option<&Tensor>) -> Result<Tensor> {
-        let in_dtype = xs.dtype();
         let (bsz, seq_len, embed_dim) = xs.dims3()?;
 
         let query_states = (self.q_proj.forward(xs)? * self.scale)?;
-        let proj_shape = (bsz * self.num_attention_heads, seq_len, self.head_dim);
-        let query_states = self
-            .shape(&query_states, seq_len, bsz)?
-            .reshape(proj_shape)?
-            .to_dtype(DType::F32)?;
-        let key_states = self
-            .shape(&self.k_proj.forward(xs)?, seq_len, bsz)?
-            .reshape(proj_shape)?
-            .to_dtype(DType::F32)?;
-        let value_states = self
-            .shape(&self.v_proj.forward(xs)?, seq_len, bsz)?
-            .reshape(proj_shape)?
-            .to_dtype(DType::F32)?;
-        let attn_weights = query_states.matmul(&key_states.transpose(1, 2)?)?;
+        let query_states = self.shape(&query_states, seq_len, bsz)?;
+        let key_states = self.shape(&self.k_proj.forward(xs)?, seq_len, bsz)?;
+        let value_states = self.shape(&self.v_proj.forward(xs)?, seq_len, bsz)?;
 
-        let src_len = key_states.dim(1)?;
+        let attn_output = if cfg!(feature = "flash-attn-v2") || cfg!(feature = "flash-attn-v3") {
+            // Use appropriate flash attention function
+            #[cfg(feature = "flash-attn-v2")]
+            {
+                // Reshape for flash attention
+                let q = query_states.transpose(1, 2)?;
+                let k = key_states.transpose(1, 2)?;
+                let v = value_states.transpose(1, 2)?;
 
-        let attn_weights = if let Some(causal_attention_mask) = causal_attention_mask {
-            attn_weights
-                .reshape((bsz, self.num_attention_heads, seq_len, src_len))?
-                .broadcast_add(causal_attention_mask)?
-                .reshape((bsz * self.num_attention_heads, seq_len, src_len))?
+                let attn = flue_flash_attn_v2::flash_attn(&q, &k, &v, 1., false)?;
+
+                // Transform back to original format
+                attn.transpose(1, 2)?
+            }
+
+            #[cfg(feature = "flash-attn-v3")]
+            {
+                // Reshape for flash attention
+                let q = query_states.transpose(1, 2)?;
+                let k = key_states.transpose(1, 2)?;
+                let v = value_states.transpose(1, 2)?;
+
+                let attn = flue_flash_attn_v3::flash_attn(&q, &k, &v, 1., false, true)?;
+
+                // Transform back to original format
+                attn.transpose(1, 2)?
+            }
+
+            #[cfg(not(any(feature = "flash-attn-v2", feature = "flash-attn-v3")))]
+            unreachable!()
         } else {
-            attn_weights
+            let attn_weights = query_states.matmul(&key_states.t()?)?;
+
+            let attn_weights = if let Some(causal_attention_mask) = causal_attention_mask {
+                attn_weights.broadcast_add(causal_attention_mask)?
+            } else {
+                attn_weights
+            };
+
+            let attn_weights = candle_nn::ops::softmax(&attn_weights, D::Minus1)?;
+
+            attn_weights.matmul(&value_states)?
         };
 
-        let attn_weights = candle_nn::ops::softmax(&attn_weights, D::Minus1)?;
-
-        let attn_output = attn_weights.matmul(&value_states)?.to_dtype(in_dtype)?;
         let attn_output = attn_output
-            .reshape((bsz, self.num_attention_heads, seq_len, self.head_dim))?
             .transpose(1, 2)?
             .reshape((bsz, seq_len, embed_dim))?;
         self.out_proj.forward(&attn_output)
@@ -285,6 +302,7 @@ pub struct ClipTextTransformer {
     embeddings: ClipTextEmbeddings,
     encoder: ClipEncoder,
     final_layer_norm: candle_nn::LayerNorm,
+    dtype: DType,
 }
 
 impl ClipTextTransformer {
@@ -296,6 +314,7 @@ impl ClipTextTransformer {
             embeddings,
             encoder,
             final_layer_norm,
+            dtype: vs.dtype(),
         })
     }
 
@@ -326,9 +345,10 @@ impl ClipTextTransformer {
         let input_ids = self.embeddings.forward(input_ids)?;
         let causal_attention_mask =
             Self::build_causal_attention_mask(bsz, seq_len, mask_after, input_ids.device())?;
-        let input_ids = self
-            .encoder
-            .forward(&input_ids, Some(&causal_attention_mask))?;
+        let input_ids = self.encoder.forward(
+            &input_ids,
+            Some(&causal_attention_mask.to_dtype(self.dtype)?),
+        )?;
         self.final_layer_norm.forward(&input_ids)
     }
 }
