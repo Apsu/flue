@@ -158,20 +158,35 @@ impl ClipAttention {
         let value_states = self.shape(&self.v_proj.forward(xs)?, seq_len, bsz)?;
 
         let attn_output = if cfg!(feature = "flash-attn-v2") || cfg!(feature = "flash-attn-v3") {
-            // Reshape for flash attention
-            let q = query_states.transpose(1, 2)?;
-            let k = key_states.transpose(1, 2)?;
-            let v = value_states.transpose(1, 2)?;
-
             // Use appropriate flash attention function
             #[cfg(feature = "flash-attn-v2")]
-            let attn = flue_flash_attn_v2::flash_attn(&q, &k, &v, 1., false)?;
+            {
+                // Reshape for flash attention
+                let q = query_states.transpose(1, 2)?;
+                let k = key_states.transpose(1, 2)?;
+                let v = value_states.transpose(1, 2)?;
+
+                let attn = flue_flash_attn_v2::flash_attn(&q, &k, &v, 1., false)?;
+
+                // Transform back to original format
+                attn.transpose(1, 2)?
+            }
 
             #[cfg(feature = "flash-attn-v3")]
-            let attn = flue_flash_attn_v3::flash_attn(&q, &k, &v, 1., false, true)?;
+            {
+                // Reshape for flash attention
+                let q = query_states.transpose(1, 2)?;
+                let k = key_states.transpose(1, 2)?;
+                let v = value_states.transpose(1, 2)?;
 
-            // Transform back to original format
-            attn.transpose(1, 2)?
+                let attn = flue_flash_attn_v3::flash_attn(&q, &k, &v, 1., false, true)?;
+
+                // Transform back to original format
+                attn.transpose(1, 2)?
+            }
+
+            #[cfg(not(any(feature = "flash-attn-v2", feature = "flash-attn-v3")))]
+            unreachable!()
         } else {
             let attn_weights = query_states.matmul(&key_states.t()?)?;
 
