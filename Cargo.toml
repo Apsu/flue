@@ -29,7 +29,6 @@ candle-core = { version = "0.8.4" }
 flue-flash-attn-v2 = { path = "./flue-flash-attn-v2", version = "0.8.0" }
 flue-flash-attn-v3 = { path = "./flue-flash-attn-v3", version = "0.8.0" }
 candle-nn = { version = "0.8.4" }
-candle-transformers = { version = "0.8.4" }
 clap = { version = "4.5.34", features = ["derive"] }
 hf-hub = { version = "0.4.2", default-features = false, features = ["ureq", "tokio", "rustls-tls"] }
 image = "0.25.6"
