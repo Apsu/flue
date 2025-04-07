@@ -60,8 +60,9 @@ async fn generate_image_handler(
     match generate_image(req, &state).await {
         Ok((img_base64, gen_time)) => Json(GenerationResponse {
             image: img_base64,
-            gen_time
-        }).into_response(),
+            gen_time,
+        })
+        .into_response(),
         Err(e) => {
             eprintln!("Error generating image: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {:?}", e)).into_response()
