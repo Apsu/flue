@@ -46,6 +46,7 @@ fn image_to_base64_png(img: &DynamicImage) -> Result<String> {
 #[derive(Serialize)]
 struct GenerationResponse {
     image: String,
+    gen_time: f64, // Time in seconds
 }
 
 // Application state containing the preloaded models and device settings.
@@ -57,7 +58,11 @@ async fn generate_image_handler(
     Json(req): Json<GenerationRequest>,
 ) -> impl IntoResponse {
     match generate_image(req, &state).await {
-        Ok(img_base64) => Json(GenerationResponse { image: img_base64 }).into_response(),
+        Ok((img_base64, gen_time)) => Json(GenerationResponse {
+            image: img_base64,
+            gen_time,
+        })
+        .into_response(),
         Err(e) => {
             eprintln!("Error generating image: {:?}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {:?}", e)).into_response()
@@ -66,9 +71,13 @@ async fn generate_image_handler(
 }
 
 /// This function uses the preloaded models from `state` to generate an image (base64).
-async fn generate_image(params: GenerationRequest, state: &AppState) -> Result<String> {
+/// Returns both the base64 image and the generation time in seconds.
+async fn generate_image(params: GenerationRequest, state: &AppState) -> Result<(String, f64)> {
+    let start_time = std::time::Instant::now();
     let image = state.0.run(params)?;
-    image_to_base64_png(&image)
+    let gen_time = start_time.elapsed().as_secs_f64();
+    let base64_image = image_to_base64_png(&image)?;
+    Ok((base64_image, gen_time))
 }
 
 #[tokio::main]
