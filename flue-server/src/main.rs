@@ -77,6 +77,7 @@ async fn generate_image(params: GenerationRequest, state: &AppState) -> Result<(
     let image = state.0.run(params)?;
     let gen_time = start_time.elapsed().as_secs_f64();
     let base64_image = image_to_base64_png(&image)?;
+    println!("Generation time: {:.2} seconds", gen_time);
     Ok((base64_image, gen_time))
 }
 
