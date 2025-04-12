@@ -69,7 +69,7 @@ curl -X POST http://localhost:8080/v1/images/generations \
 ## Roadmap
 
 - ✅ Flux models support
-- ⬜ FlashAttention integration
+- ✅ FlashAttention integration
 - ⬜ Broader model compatibility (Stable Diffusion, Hunyuan, etc.)
 - ⬜ Distributed inference across multiple GPUs/nodes
 - ⬜ Parallel optimization methods like PipeFusion, Ulysses, Ring, and DistVAE
