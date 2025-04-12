@@ -107,14 +107,21 @@ pub fn denoise(
     let b_sz = img.dim(0)?;
     let dev = img.device();
     let guidance = Tensor::full(guidance as f32, b_sz, dev)?;
+    let t_vec_one = Tensor::full(1f32, b_sz, dev)?;
     let mut img = img.clone();
+
+    let pe = {
+        let ids = Tensor::cat(&[txt_ids, img_ids], 1)?;
+        ids.apply(&model.pe_embedder)?
+    };
+
     for window in timesteps.windows(2) {
         let (t_curr, t_prev) = match window {
             [a, b] => (a, b),
             _ => continue,
         };
-        let t_vec = Tensor::full(*t_curr as f32, b_sz, dev)?;
-        let pred = model.forward(&img, img_ids, txt, txt_ids, &t_vec, vec_, Some(&guidance))?;
+        let t_vec = (&t_vec_one * { *t_curr })?;
+        let pred = model.forward(&img, txt, &pe, &t_vec, vec_, Some(&guidance))?;
         img = (img + pred * (t_prev - t_curr))?
     }
     Ok(img)
