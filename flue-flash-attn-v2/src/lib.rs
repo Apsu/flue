@@ -144,8 +144,7 @@ impl FlashAttn {
 
         let elem_count = out_shape.elem_count();
         let dst = unsafe { dev.alloc::<T>(elem_count) }?;
-        let softmax_lse = dev
-            .alloc_zeros::<f32>(b_sz * 128 * num_heads * seqlen_q)?;
+        let softmax_lse = dev.alloc_zeros::<f32>(b_sz * 128 * num_heads * seqlen_q)?;
 
         let is_bf16 = if is_bf16 { 1 } else { 0 };
 
@@ -610,8 +609,7 @@ impl FlashAttnVarLen {
 
         let elem_count = out_shape.elem_count();
         let dst = unsafe { dev.alloc::<T>(elem_count) }?;
-        let softmax_lse = dev
-            .alloc_zeros::<f32>(batch_size * num_heads * self.max_seqlen_q)?;
+        let softmax_lse = dev.alloc_zeros::<f32>(batch_size * num_heads * self.max_seqlen_q)?;
 
         let is_bf16 = if is_bf16 { 1 } else { 0 };
 
