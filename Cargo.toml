@@ -24,12 +24,19 @@ accelerate-src = { version = "0.3.2" }
 anyhow = "1.0.97"
 axum = "0.8.3"
 base64 = "0.22.1"
+# TODO: Uncomment when candle 0.9.0-alpha.2 is pushed to crates.io
+# candle-core = { version = "0.9.0-alpha.2" }
+# candle-flash-attn = { version = "0.9.0-alpha.2" }
+# candle-nn = { version = "0.9.0-alpha.2" }
+# candle-transformers = { version = "0.9.0-alpha.2" }
+candle-core = { git = "https://github.com/huggingface/candle", branch = "main" }
+candle-flash-attn = { git = "https://github.com/huggingface/candle", branch = "main" }
+candle-nn = { git = "https://github.com/huggingface/candle", branch = "main" }
+candle-transformers = { git = "https://github.com/huggingface/candle", branch = "main" }
+clap = { version = "4.5.34", features = ["derive"] }
 flue-core = { path = "./flue-core", version = "0.1.0" }
-candle-core = { version = "0.8.4" }
 flue-flash-attn-v2 = { path = "./flue-flash-attn-v2", version = "0.8.0" }
 flue-flash-attn-v3 = { path = "./flue-flash-attn-v3", version = "0.8.0" }
-candle-nn = { version = "0.8.4" }
-clap = { version = "4.5.34", features = ["derive"] }
 hf-hub = { version = "0.4.2", default-features = false, features = ["ureq", "tokio", "rustls-tls"] }
 image = "0.25.6"
 intel-mkl-src = { version = "0.8.1" }
