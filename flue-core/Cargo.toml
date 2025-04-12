@@ -14,10 +14,11 @@ homepage.workspace = true
 accelerate-src = { workspace = true, optional = true }
 anyhow = { workspace = true }
 candle-core = { workspace = true }
-flue-flash-attn-v2 = { workspace = true, optional = true }
-flue-flash-attn-v3 = { workspace = true, optional = true }
+candle-flash-attn = { workspace = true, optional = true }
 candle-nn = { workspace = true }
 candle-transformers = { workspace = true }
+flue-flash-attn-v2 = { workspace = true, optional = true }
+flue-flash-attn-v3 = { workspace = true, optional = true }
 hf-hub = { workspace = true }
 image = { workspace = true }
 intel-mkl-src = { workspace = true, optional = true }
@@ -32,8 +33,8 @@ serde_plain = { workspace = true }
 cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
 cudnn = ["candle-core/cudnn"]
 metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
+flash-attn = ["candle-flash-attn"]
 flash-attn-v2 = ["cuda", "flue-flash-attn-v2"]
 flash-attn-v3 = ["cuda", "flue-flash-attn-v3"]
 accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate", "dep:accelerate-src"]
 mkl = ["candle-core/mkl", "candle-nn/mkl", "candle-transformers/mkl", "dep:intel-mkl-src"]
-
