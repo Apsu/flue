@@ -1,4 +1,4 @@
-use candle_core::{DType, IndexOp, Result, Tensor, D};
+use candle_core::{DType, IndexOp, Module, Result, Tensor, D};
 use candle_nn::{LayerNorm, Linear, RmsNorm, VarBuilder};
 
 // https://github.com/black-forest-labs/flux/blob/727e3a71faf37390f318cf9434f0939653302b60/src/flux/model.py#L12
@@ -18,7 +18,6 @@ pub struct Config {
     pub guidance_embed: bool,
 }
 
-#[allow(dead_code)]
 impl Config {
     // https://github.com/black-forest-labs/flux/blob/727e3a71faf37390f318cf9434f0939653302b60/src/flux/util.py#L32
     pub fn dev() -> Self {
@@ -62,7 +61,11 @@ fn layer_norm(dim: usize, vb: VarBuilder) -> Result<LayerNorm> {
     Ok(LayerNorm::new_no_bias(ws, 1e-6))
 }
 
-#[cfg(any(feature = "flash-attn-v2", feature = "flash-attn-v3"))]
+#[cfg(any(
+    feature = "flash-attn-v2",
+    feature = "flash-attn-v3",
+    feature = "flash-attn"
+))]
 fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
     let dim = q.dim(D::Minus1)?;
     let scale_factor = 1.0 / (dim as f64).sqrt();
@@ -74,6 +77,9 @@ fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Te
     let v = v.transpose(1, 2)?;
 
     // Use appropriate flash attention function
+    #[cfg(feature = "flash-attn")]
+    let attn = candle_flash_attn::flash_attn(&q, &k, &v, scale_factor as f32, false)?;
+
     #[cfg(feature = "flash-attn-v2")]
     let attn = flue_flash_attn_v2::flash_attn(&q, &k, &v, scale_factor as f32, false)?;
 
@@ -84,7 +90,11 @@ fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Te
     attn.transpose(1, 2)?.reshape(batch_dims)
 }
 
-#[cfg(not(any(feature = "flash-attn-v2", feature = "flash-attn-v3")))]
+#[cfg(not(any(
+    feature = "flash-attn-v2",
+    feature = "flash-attn-v3",
+    feature = "flash-attn"
+)))]
 fn scaled_dot_product_attention(q: &Tensor, k: &Tensor, v: &Tensor) -> Result<Tensor> {
     let dim = q.dim(D::Minus1)?;
     let scale_factor = 1.0 / (dim as f64).sqrt();
@@ -149,11 +159,11 @@ pub(crate) fn timestep_embedding(t: &Tensor, dim: usize, dtype: DType) -> Result
     let dev = t.device();
     let half = dim / 2;
     let t = (t * TIME_FACTOR)?;
-    let arange = Tensor::arange(0, half as u32, dev)?.to_dtype(candle_core::DType::F32)?;
+    let arange = Tensor::arange(0, half as u32, dev)?.to_dtype(DType::F32)?;
     let freqs = (arange * (-MAX_PERIOD.ln() / half as f64))?.exp()?;
     let args = t
         .unsqueeze(1)?
-        .to_dtype(candle_core::DType::F32)?
+        .to_dtype(DType::F32)?
         .broadcast_mul(&freqs.unsqueeze(0)?)?;
     let emb = Tensor::cat(&[args.cos()?, args.sin()?], D::Minus1)?.to_dtype(dtype)?;
     Ok(emb)
@@ -177,7 +187,7 @@ impl EmbedNd {
     }
 }
 
-impl candle_core::Module for EmbedNd {
+impl Module for EmbedNd {
     fn forward(&self, ids: &Tensor) -> Result<Tensor> {
         let n_axes = ids.dim(D::Minus1)?;
         let mut emb = Vec::with_capacity(n_axes);
@@ -211,7 +221,7 @@ impl MlpEmbedder {
     }
 }
 
-impl candle_core::Module for MlpEmbedder {
+impl Module for MlpEmbedder {
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
         xs.apply(&self.in_layer)?.silu()?.apply(&self.out_layer)
     }
@@ -370,7 +380,7 @@ impl Mlp {
     }
 }
 
-impl candle_core::Module for Mlp {
+impl Module for Mlp {
     fn forward(&self, xs: &Tensor) -> Result<Tensor> {
         xs.apply(&self.lin1)?.gelu()?.apply(&self.lin2)
     }
